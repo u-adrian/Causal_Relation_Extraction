@@ -1,91 +1,27 @@
 import numpy as np
 import pandas as pd
-from tabulate import tabulate
-from sklearn_crfsuite import CRF
-from sklearn_crfsuite import metrics
 
 
-def load_data():
-    dataset_path = "C:/Dev/Smart_Data/E4/datasets/output.xlsx"
+def load_data(dataset_path):
 
     with open(dataset_path, "rb") as data_file:
         df = pd.read_excel(data_file, index_col=0)
 
-    print(tabulate(df.head(1), headers = 'keys', tablefmt = 'psql'))
-
     num_samples = len(df.index)
-    x_train_and_test = [sent2better_format(df.iloc[sample]["context"], df.iloc[sample]["idx"], int(df.iloc[sample]["label"]), direction = int(df.iloc[sample]["direction"])) for sample in range(num_samples)]
-    x_train_and_test = np.asarray(x_train_and_test, dtype=object)
+    train_and_test_data = [extract_words_and_tags(df.iloc[sample]["context"], df.iloc[sample]["idx"],
+                                                  int(df.iloc[sample]["label"]), int(df.iloc[sample]["direction"]))
+                           for sample in range(num_samples)]
 
-    train_sentences = x_train_and_test[:, 0]
-    y_train = list(x_train_and_test[:, 1])
+    train_and_test_data = np.asarray(train_and_test_data, dtype=object)
 
-    x_train = [sent2features(s) for s in train_sentences]
+    x_data = list(train_and_test_data[:, 0])
 
-    x_test = x_train[8000:]
-    y_test = y_train[8000:]
+    y_data = list(train_and_test_data[:, 1])
 
-    x_train = x_train[0:8000]
-    y_train = y_train[0:8000]
+    return x_data, y_data
 
 
-    crf = CRF(algorithm='lbfgs',
-              c1=0.1,
-              c2=0.1,
-              max_iterations=100,
-              all_possible_transitions=False)
-
-    crf.fit(x_train, y_train)
-    y_pred = crf.predict(x_test)
-    print(len(y_pred))
-    print(metrics.flat_classification_report(
-        y_test, y_pred, digits=3
-    ))
-
-    print(metrics.flat_f1_score(y_test, y_pred,
-                          average='weighted'))
-    
-
-def sent2features(sent):
-    return [word2features(sent, i) for i in range(len(sent))]
-
-
-def word2features(sent, i):
-    word = sent[i]
-
-    features = {
-        'bias': 1.0,
-        'word.lower()': word.lower(),
-        # 'word[-3:]': word[-3:],
-        # 'word[-2:]': word[-2:],
-        # 'word.isupper()': word.isupper(),
-        # 'word.istitle()': word.istitle(),
-        # 'word.isdigit()': word.isdigit(),
-    }
-    if i > 0:
-        word1 = sent[i - 1]
-        features.update({
-            '-1:word.lower()': word1.lower(),
-            # '-1:word.istitle()': word1.istitle(),
-            # '-1:word.isupper()': word1.isupper(),
-        })
-    else:
-        features['BOS'] = True
-
-    if i < len(sent) - 1:
-        word1 = sent[i + 1]
-        features.update({
-            '+1:word.lower()': word1.lower(),
-            # '+1:word.istitle()': word1.istitle(),
-            # '+1:word.isupper()': word1.isupper(),
-        })
-    else:
-        features['EOS'] = True
-
-    return features
-
-
-def sent2better_format(sent, idx, label, direction):
+def extract_words_and_tags(sent, idx, label, direction):
     context_list = sent[:-1].split(" ")
 
     # create start and end index for every word
@@ -139,11 +75,3 @@ def extract_span_idx(idx_string):
     span2_idx_list = list(map(splitting_func, span2_idx_list))
 
     return span1_idx_list, span2_idx_list
-
-
-def main():
-    load_data()
-
-
-if __name__ == "__main__":
-    main()
