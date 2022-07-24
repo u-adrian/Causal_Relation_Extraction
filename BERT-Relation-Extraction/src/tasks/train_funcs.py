@@ -77,7 +77,7 @@ def evaluate_(output, labels, ignore_idx):
     ### ignore index 0 (padding) when calculating accuracy
     idxs = (labels != ignore_idx).squeeze(dim=1)
     o_labels = torch.softmax(output, dim=1).max(1)[1]
-    l = labels.squeeze()[idxs]
+    l = labels.squeeze(dim=1)[idxs]
     o = o_labels[idxs]
 
     if len(idxs) > 1:
