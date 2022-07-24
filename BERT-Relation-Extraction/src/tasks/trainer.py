@@ -6,6 +6,7 @@ Created on Fri Nov 29 09:53:55 2019
 @author: weetee
 """
 import os
+from typing_extensions import dataclass_transform
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -181,15 +182,13 @@ def train_and_fit(args):
 
     data = pd.concat([train_set, test_set])
 
-    print(data.columns)
-    print(data.head())
-
     numpy_data = data.to_numpy()
 
     np.random.seed(42)
-    kf = KFold(n_splits=5, shuffle=True)
+    n_splits = 5
+    kf = KFold(n_splits=n_splits, shuffle=True)
 
-    f1_scores_per_split = np.zeros(5)
+    f1_scores_per_split = np.zeros(n_splits)
 
     for run, (train_index, test_index) in enumerate(kf.split(numpy_data)):
 
@@ -244,9 +243,6 @@ def train_and_fit(args):
             accuracy_per_batch = []
             for i, data in enumerate(train_loader, 0):
                 x, e1_e2_start, labels, _, _, _ = data
-                print(x)
-                print(e1_e2_start)
-                print(labels)
                 attention_mask = (x != pad_id).float()
                 token_type_ids = torch.zeros((x.shape[0], x.shape[1])).long()
 
