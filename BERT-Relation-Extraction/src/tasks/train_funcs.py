@@ -75,9 +75,18 @@ def load_results(model_no=0):
 
 def evaluate_(output, labels, ignore_idx):
     ### ignore index 0 (padding) when calculating accuracy
+    print(output.shape)
+    print("SHAPE LABELS", labels.shape)
+
     idxs = (labels != ignore_idx).squeeze(dim=1)
     o_labels = torch.softmax(output, dim=1).max(1)[1]
+
+    print("HALLO LABELS", labels)
+
     l = labels.squeeze(dim=1)[idxs]
+
+    print("HALLO L", l)
+
     o = o_labels[idxs]
 
     if len(idxs) > 1:
@@ -117,17 +126,28 @@ def evaluate_results(net, test_loader, pad_id, cuda):
             )
 
             accuracy, (o, l) = evaluate_(classification_logits, labels, ignore_idx=-1)
+
+            print("OOOOOO", o)
+            print("LLLL", l)
+
             out_labels.append([str(i) for i in o])
             true_labels.append([str(i) for i in l])
             acc += accuracy
 
     accuracy = acc / (i + 1)
+
+    print("JALLO HEIRDIAIDIF AFFQ", out_labels)
+    print(true_labels)
+
     results = {
         "accuracy": accuracy,
         "precision": precision_score(true_labels, out_labels),
         "recall": recall_score(true_labels, out_labels),
         "f1": f1_score(true_labels, out_labels),
     }
+
+    print("HALLO DIANA HIER IST DER F1", results["f1"])
+
     logger.info("***** Eval results *****")
     for key in sorted(results.keys()):
         logger.info("  %s = %s", key, str(results[key]))

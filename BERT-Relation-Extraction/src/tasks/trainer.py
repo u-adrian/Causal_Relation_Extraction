@@ -182,6 +182,8 @@ def train_and_fit(args):
 
     data = pd.concat([train_set, test_set])
 
+    data = data.iloc[0:1000]
+
     numpy_data = data.to_numpy()
 
     np.random.seed(42)
@@ -241,67 +243,69 @@ def train_and_fit(args):
             losses_per_batch = []
             total_acc = 0.0
             accuracy_per_batch = []
-            for i, data in enumerate(train_loader, 0):
-                x, e1_e2_start, labels, _, _, _ = data
-                attention_mask = (x != pad_id).float()
-                token_type_ids = torch.zeros((x.shape[0], x.shape[1])).long()
+            # for i, data in enumerate(train_loader, 0):
+            #     x, e1_e2_start, labels, _, _, _ = data
+            #     attention_mask = (x != pad_id).float()
+            #     token_type_ids = torch.zeros((x.shape[0], x.shape[1])).long()
 
-                if cuda:
-                    x = x.cuda()
-                    labels = labels.cuda()
-                    attention_mask = attention_mask.cuda()
-                    token_type_ids = token_type_ids.cuda()
+            #     if cuda:
+            #         x = x.cuda()
+            #         labels = labels.cuda()
+            #         attention_mask = attention_mask.cuda()
+            #         token_type_ids = token_type_ids.cuda()
 
-                classification_logits = net(
-                    x,
-                    token_type_ids=token_type_ids,
-                    attention_mask=attention_mask,
-                    Q=None,
-                    e1_e2_start=e1_e2_start,
-                )
+            #     classification_logits = net(
+            #         x,
+            #         token_type_ids=token_type_ids,
+            #         attention_mask=attention_mask,
+            #         Q=None,
+            #         e1_e2_start=e1_e2_start,
+            #     )
 
-                # return classification_logits, labels, net, tokenizer # for debugging now
+            #     # return classification_logits, labels, net, tokenizer # for debugging now
 
-                loss = criterion(classification_logits, labels.squeeze(1))
-                loss = loss / args.gradient_acc_steps
+            #     loss = criterion(classification_logits, labels.squeeze(1))
+            #     loss = loss / args.gradient_acc_steps
 
-                if args.fp16:
-                    with amp.scale_loss(loss, optimizer) as scaled_loss:
-                        scaled_loss.backward()
-                else:
-                    loss.backward()
+            #     if args.fp16:
+            #         with amp.scale_loss(loss, optimizer) as scaled_loss:
+            #             scaled_loss.backward()
+            #     else:
+            #         loss.backward()
 
-                if args.fp16:
-                    grad_norm = torch.nn.utils.clip_grad_norm_(
-                        amp.master_params(optimizer), args.max_norm
-                    )
-                else:
-                    grad_norm = clip_grad_norm_(net.parameters(), args.max_norm)
+            #     if args.fp16:
+            #         grad_norm = torch.nn.utils.clip_grad_norm_(
+            #             amp.master_params(optimizer), args.max_norm
+            #         )
+            #     else:
+            #         grad_norm = clip_grad_norm_(net.parameters(), args.max_norm)
 
-                if (i % args.gradient_acc_steps) == 0:
-                    optimizer.step()
-                    optimizer.zero_grad()
+            #     if (i % args.gradient_acc_steps) == 0:
+            #         optimizer.step()
+            #         optimizer.zero_grad()
 
-                total_loss += loss.item()
-                total_acc += evaluate_(classification_logits, labels, ignore_idx=-1)[0]
+            #     total_loss += loss.item()
+            #     total_acc += evaluate_(classification_logits, labels, ignore_idx=-1)[0]
 
-                if (i % update_size) == (update_size - 1):
-                    losses_per_batch.append(
-                        args.gradient_acc_steps * total_loss / update_size
-                    )
-                    accuracy_per_batch.append(total_acc / update_size)
-                    print(
-                        "[Epoch: %d, %5d/ %d points] total loss, accuracy per batch: %.3f, %.3f"
-                        % (
-                            epoch + 1,
-                            (i + 1) * args.batch_size,
-                            train_len,
-                            losses_per_batch[-1],
-                            accuracy_per_batch[-1],
-                        )
-                    )
-                    total_loss = 0.0
-                    total_acc = 0.0
+            #     if (i % update_size) == (update_size - 1):
+            #         losses_per_batch.append(
+            #             args.gradient_acc_steps * total_loss / update_size
+            #         )
+            #         accuracy_per_batch.append(total_acc / update_size)
+            #         print(
+            #             "[Epoch: %d, %5d/ %d points] total loss, accuracy per batch: %.3f, %.3f"
+            #             % (
+            #                 epoch + 1,
+            #                 (i + 1) * args.batch_size,
+            #                 train_len,
+            #                 losses_per_batch[-1],
+            #                 accuracy_per_batch[-1],
+            #             )
+            #         )
+            #         total_loss = 0.0
+            #         total_acc = 0.0
+
+            print("HALLO DIANA")
 
             scheduler.step()
             results = evaluate_results(net, test_loader, pad_id, cuda)
