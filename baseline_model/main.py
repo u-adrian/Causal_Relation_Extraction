@@ -10,9 +10,11 @@ from baseline_model.feature_creator import sent2features
 
 
 def main():
-    dataset_path = "C:/Dev/Smart_Data/E4/datasets/output.xlsx"
+    #dataset_path = "C:/Dev/Smart_Data/E4/datasets/output.xlsx"
+    dataset_path = "C:/Dev/Smart_Data/E4/datasets/crest_1_2_13.xlsx"
+
     number_splits = 5
-    seeds = [0,1,42,101]
+    seeds = [0,1,42,47,101]
 
     x_data, y_data = load_data(dataset_path)
     x_data = [sent2features(s) for s in x_data]
@@ -25,10 +27,9 @@ def main():
     y_test_arr = np.zeros((len(seeds), number_splits), dtype=object)
     y_pred_arr = np.zeros((len(seeds), number_splits), dtype=object)
 
-
-    for cv, seed in enumerate(seeds):
+    for seed_id, seed in enumerate(seeds):
         np.random.seed(seed)
-        print(f"CV {cv}:")
+        print(f"CV {seed_id}:")
         for run, (train_index, test_index) in enumerate(kf.split(x_data)):
             print(f"    Run {run}")
             x_train, x_test = x_data[train_index], x_data[test_index]
@@ -39,8 +40,8 @@ def main():
 
             y_pred = crf.predict(x_test)
 
-            y_test_arr[cv][run] = list(y_test)
-            y_pred_arr[cv][run] = list(y_pred)
+            y_test_arr[seed_id][run] = list(y_test)
+            y_pred_arr[seed_id][run] = list(y_pred)
 
 
     print("ALL: ")
@@ -63,6 +64,6 @@ def plot_results(y_test_arr, y_pred_arr):
         print(metrics.flat_classification_report(all_y_test, all_y_pred, digits=3))
         print(metrics.flat_f1_score(all_y_test, all_y_pred, average='weighted'))
 
-        
+
 if __name__ == "__main__":
     main()

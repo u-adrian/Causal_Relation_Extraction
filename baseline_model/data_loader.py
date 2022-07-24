@@ -8,6 +8,7 @@ def load_data(dataset_path):
         df = pd.read_excel(data_file, index_col=0)
 
     num_samples = len(df.index)
+    print(num_samples)
     train_and_test_data = [extract_words_and_tags(df.iloc[sample]["context"], df.iloc[sample]["idx"],
                                                   int(df.iloc[sample]["label"]), int(df.iloc[sample]["direction"]))
                            for sample in range(num_samples)]
@@ -22,7 +23,7 @@ def load_data(dataset_path):
 
 
 def extract_words_and_tags(sent, idx, label, direction):
-    context_list = sent[:-1].split(" ")
+    context_list = sent.split(" ")
 
     # create start and end index for every word
     start_pos = []
@@ -49,13 +50,23 @@ def extract_words_and_tags(sent, idx, label, direction):
     span1_idx_list, span2_idx_list = extract_span_idx(idx)
     tags = []
     for start_end_pos in start_end_pos_list:
-        if start_end_pos in span1_idx_list:
-            tags.append(span_1_tag)
-        elif start_end_pos in span2_idx_list:
-            tags.append(span_2_tag)
-        else:
+        tag_appended = False
+        for span1_idx in span1_idx_list:
+            r = range(span1_idx[0], span1_idx[1])
+            if start_end_pos[0] in r or start_end_pos[1] in r:
+                tags.append(span_1_tag)
+                tag_appended = True
+                break
+        if not tag_appended:
+            for span2_idx in span2_idx_list:
+                r = range(span2_idx[0], span2_idx[1])
+                if start_end_pos[0] in r or start_end_pos[1] in r:
+                    tags.append(span_2_tag)
+                    tag_appended = True
+                    break
+        if not tag_appended:
             tags.append("O")
-
+    assert len(context_list) == len(tags)
     return context_list, tags
 
 
