@@ -286,10 +286,6 @@ def load_dataloaders(args):
             "Saved %s tokenizer at ./data/%s_tokenizer.pkl" % (model_name, model_name)
         )
 
-    e1_id = tokenizer.convert_tokens_to_ids("[E1]")
-    e2_id = tokenizer.convert_tokens_to_ids("[E2]")
-    assert e1_id != e2_id != 1
-
     # if args.task == "semeval":
     relations_path = "./data/relations.pkl"
     train_path = "./data/df_train.pkl"
@@ -307,36 +303,5 @@ def load_dataloaders(args):
         df_train, df_test, rm = preprocess_crest_dataset(args)
         # df_train, df_test, rm = preprocess_semeval2010_8(args)
 
-    print(df_train)
-
-    train_set = semeval_dataset(df_train, tokenizer=tokenizer, e1_id=e1_id, e2_id=e2_id)
-    test_set = semeval_dataset(df_test, tokenizer=tokenizer, e1_id=e1_id, e2_id=e2_id)
-
-    print(train_set.df)
-    print(test_set.df)
-
-    train_length = len(train_set)
-    test_length = len(test_set)
-    PS = Pad_Sequence(
-        seq_pad_value=tokenizer.pad_token_id,
-        label_pad_value=tokenizer.pad_token_id,
-        label2_pad_value=-1,
-    )
-    train_loader = DataLoader(
-        train_set,
-        batch_size=args.batch_size,
-        shuffle=True,
-        num_workers=0,
-        collate_fn=PS,
-        pin_memory=False,
-    )
-    test_loader = DataLoader(
-        test_set,
-        batch_size=args.batch_size,
-        shuffle=True,
-        num_workers=0,
-        collate_fn=PS,
-        pin_memory=False,
-    )
-
-    return train_loader, test_loader, train_length, test_length
+    # return train_loader, test_loader, train_length, test_length
+    return df_train, df_test, len(df_train), len(df_test)
