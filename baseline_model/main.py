@@ -1,18 +1,17 @@
 import numpy as np
 from sklearn.model_selection import KFold
 
-from baseline_model.data_loader import load_data
+from data_loader import load_data
 
 from sklearn_crfsuite import CRF
 from sklearn_crfsuite import metrics
 
-from baseline_model.feature_creator import sent2features
+from feature_creator import sent2features
 
 import matplotlib.pyplot as plt
 
 
 def main():
-    #dataset_path = "C:/Dev/Smart_Data/E4/datasets/output.xlsx"
     dataset_path = "C:/Dev/Smart_Data/E4/datasets/crest_1_2_13.xlsx"
     number_splits = 5
     seeds = [0, 1, 42, 47, 101]
