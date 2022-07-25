@@ -6,12 +6,12 @@ Created on Mon Dec  2 17:40:16 2019
 @author: weetee
 """
 from src.tasks.trainer import train_and_fit
-from src.tasks.infer import infer_from_trained, FewRel
+from src.tasks.infer import infer_from_trained
 import logging
 from argparse import ArgumentParser
 
 """
-This fine-tunes the BERT model on SemEval, FewRel tasks
+This fine-tunes the BERT model on SemEval, CREST tasks
 """
 
 logging.basicConfig(
@@ -23,12 +23,7 @@ logger = logging.getLogger("__file__")
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument(
-        "--data",
-        type=str,
-        default="./data/CREST/sameval_t8.xlsx",
-        help="training data .txt file path",
-    )
+    parser.add_argument("--task", type=str, default="semeval", help="semeval, crest")
     parser.add_argument(
         "--use_pretrained_blanks",
         type=int,
