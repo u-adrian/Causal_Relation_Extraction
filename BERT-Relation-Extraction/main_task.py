@@ -36,7 +36,7 @@ if __name__ == "__main__":
         help="0: Don't use pre-trained blanks model, 1: use pre-trained blanks model",
     )
     parser.add_argument(
-        "--num_classes", type=int, default=3, help="number of relation classes"
+        "--num_classes", type=int, default=19, help="number of relation classes"
     )
     parser.add_argument(
         "--batch_size", type=int, default=32, help="Training batch size"
