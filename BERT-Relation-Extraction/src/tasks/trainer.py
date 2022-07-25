@@ -303,7 +303,7 @@ def train_and_fit(args):
                     total_loss = 0.0
                     total_acc = 0.0
 
-            print("HALLO DIANA")
+            # print("HALLO DIANA")
 
             scheduler.step()
             results = evaluate_results(net, test_loader, pad_id, cuda)
