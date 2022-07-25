@@ -11,7 +11,7 @@ import sys
 sys.path.append(
     "/Users/lukaskubelka/Documents/_KIT/_Studium/_M.Sc./_Semester/Semester-2/PSDA/Uebungen/E4/Causal_Relation_Extraction"
 )
-from baseline_model.data_loader import load_data
+# from baseline_model.data_loader import load_data
 from sklearn.model_selection import train_test_split
 import os
 import pandas as pd
