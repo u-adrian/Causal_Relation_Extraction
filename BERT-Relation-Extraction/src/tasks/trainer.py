@@ -153,22 +153,22 @@ def train_and_fit(args):
                 print("[FREE]: %s" % name)
                 param.requires_grad = True
 
-        if args.use_pretrained_blanks == 1:
-            logger.info(
-                "Loading model pre-trained on blanks at ./data/test_checkpoint_%d.pth.tar..."
-                % args.model_no
-            )
-            checkpoint_path = "./data/test_checkpoint_%d.pth.tar" % args.model_no
-            checkpoint = torch.load(checkpoint_path)
-            model_dict = net.state_dict()
-            pretrained_dict = {
-                k: v
-                for k, v in checkpoint["state_dict"].items()
-                if k in model_dict.keys()
-            }
-            model_dict.update(pretrained_dict)
-            net.load_state_dict(pretrained_dict, strict=False)
-            del checkpoint, pretrained_dict, model_dict
+        # if args.use_pretrained_blanks == 1:
+        #     logger.info(
+        #         "Loading model pre-trained on blanks at ./data/test_checkpoint_%d.pth.tar..."
+        #         % args.model_no
+        #     )
+        #     checkpoint_path = "./data/test_checkpoint_%d.pth.tar" % args.model_no
+        #     checkpoint = torch.load(checkpoint_path)
+        #     model_dict = net.state_dict()
+        #     pretrained_dict = {
+        #         k: v
+        #         for k, v in checkpoint["state_dict"].items()
+        #         if k in model_dict.keys()
+        #     }
+        #     model_dict.update(pretrained_dict)
+        #     net.load_state_dict(pretrained_dict, strict=False)
+        #     del checkpoint, pretrained_dict, model_dict
 
         criterion = nn.CrossEntropyLoss(ignore_index=-1)
         optimizer = optim.Adam([{"params": net.parameters(), "lr": args.lr}])
@@ -179,24 +179,29 @@ def train_and_fit(args):
             gamma=0.8,
         )
 
-        start_epoch, best_pred, amp_checkpoint = load_state(
-            net, optimizer, scheduler, args, load_best=False
-        )
+        # start_epoch, best_pred, amp_checkpoint = load_state(
+        #     net, optimizer, scheduler, args, load_best=False
+        # )
 
-        if (args.fp16) and (amp is not None):
-            logger.info("Using fp16...")
-            net, optimizer = amp.initialize(net, optimizer, opt_level="O2")
-            if amp_checkpoint is not None:
-                amp.load_state_dict(amp_checkpoint)
-            scheduler = optim.lr_scheduler.MultiStepLR(
-                optimizer,
-                milestones=[2, 4, 6, 8, 12, 15, 18, 20, 22, 24, 26, 30],
-                gamma=0.8,
-            )
+        start_epoch = 0
+        best_pred = 0
 
-        losses_per_epoch, accuracy_per_epoch, test_f1_per_epoch = load_results(
-            args.model_no
-        )
+        # if (args.fp16) and (amp is not None):
+        #     logger.info("Using fp16...")
+        #     net, optimizer = amp.initialize(net, optimizer, opt_level="O2")
+        #     if amp_checkpoint is not None:
+        #         amp.load_state_dict(amp_checkpoint)
+        #     scheduler = optim.lr_scheduler.MultiStepLR(
+        #         optimizer,
+        #         milestones=[2, 4, 6, 8, 12, 15, 18, 20, 22, 24, 26, 30],
+        #         gamma=0.8,
+        #     )
+
+        # losses_per_epoch, accuracy_per_epoch, test_f1_per_epoch = load_results(
+        #     args.model_no
+        # )
+
+        losses_per_epoch, accuracy_per_epoch, test_f1_per_epoch = [], [], []
 
         train, test = numpy_data[train_index], numpy_data[test_index]
 
