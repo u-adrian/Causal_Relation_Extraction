@@ -31,6 +31,70 @@ logging.basicConfig(
 logger = logging.getLogger("__file__")
 
 
+def process_text(text, mode="train"):
+    sents, relations, comments, blanks = [], [], [], []
+    for i in range(int(len(text) / 4)):
+        sent = text[4 * i]
+        relation = text[4 * i + 1]
+        comment = text[4 * i + 2]
+        blank = text[4 * i + 3]
+
+        # check entries
+        if mode == "train":
+            assert int(re.match("^\d+", sent)[0]) == (i + 1)
+        else:
+            assert (int(re.match("^\d+", sent)[0]) - 8000) == (i + 1)
+        assert re.match("^Comment", comment)
+        assert len(blank) == 1
+
+        sent = re.findall('"(.+)"', sent)[0]
+        sent = re.sub("<e1>", "[E1]", sent)
+        sent = re.sub("</e1>", "[/E1]", sent)
+        sent = re.sub("<e2>", "[E2]", sent)
+        sent = re.sub("</e2>", "[/E2]", sent)
+        sents.append(sent)
+        relations.append(relation), comments.append(comment)
+        blanks.append(blank)
+    return sents, relations, comments, blanks
+
+
+def preprocess_semeval2010_8(args):
+    """
+    Data preprocessing for SemEval2010 task 8 dataset
+    """
+    data_path = (
+        "./data/SemEval2010_task8_all_data/SemEval2010_task8_training/TRAIN_FILE.TXT"
+    )
+    logger.info("Reading training file %s..." % data_path)
+    with open(data_path, "r", encoding="utf8") as f:
+        text = f.readlines()
+
+    sents, relations, comments, blanks = process_text(text, "train")
+    df_train = pd.DataFrame(data={"sents": sents, "relations": relations})
+
+    data_path = "./data/SemEval2010_task8_all_data/SemEval2010_task8_testing_keys/TEST_FILE_FULL.TXT"
+    logger.info("Reading test file %s..." % data_path)
+    with open(data_path, "r", encoding="utf8") as f:
+        text = f.readlines()
+
+    sents, relations, comments, blanks = process_text(text, "test")
+    df_test = pd.DataFrame(data={"sents": sents, "relations": relations})
+
+    rm = Relations_Mapper(df_train["relations"])
+    save_as_pickle("relations.pkl", rm)
+    df_test["relations_id"] = df_test.progress_apply(
+        lambda x: rm.rel2idx[x["relations"]], axis=1
+    )
+    df_train["relations_id"] = df_train.progress_apply(
+        lambda x: rm.rel2idx[x["relations"]], axis=1
+    )
+    save_as_pickle("df_train.pkl", df_train)
+    save_as_pickle("df_test.pkl", df_test)
+    logger.info("Finished and saved!")
+
+    return df_train, df_test, rm
+
+
 def process_crest_text_alt(x_data, y_data):
     sents, relations = [], []
     for token_list, label_list in zip(x_data, y_data):
@@ -300,8 +364,8 @@ def load_dataloaders(args):
         df_test = load_pickle("df_test.pkl")
         logger.info("Loaded preproccessed data.")
     else:
-        df_train, df_test, rm = preprocess_crest_dataset(args)
-        # df_train, df_test, rm = preprocess_semeval2010_8(args)
+        df_train, df_test, rm = preprocess_semeval2010_8(args)
+        # df_train, df_test, rm = preprocess_crest_dataset(args)
 
     # return train_loader, test_loader, train_length, test_length
     return df_train, df_test, len(df_train), len(df_test)
