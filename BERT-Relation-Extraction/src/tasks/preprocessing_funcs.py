@@ -5,18 +5,11 @@ Created on Tue Nov 26 18:12:22 2019
 
 @author: weetee
 """
-import sys
-
-# TODO: Generalisieren
-sys.path.append(
-    "/Users/lukaskubelka/Documents/_KIT/_Studium/_M.Sc./_Semester/Semester-2/PSDA/Uebungen/E4/Causal_Relation_Extraction"
-)
-# from baseline_model.data_loader import load_data
 from sklearn.model_selection import train_test_split
 import os
 import pandas as pd
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 from ..misc import save_as_pickle, load_pickle
 from tqdm import tqdm
@@ -96,56 +89,7 @@ def preprocess_semeval2010_8(args):
     return df_train, df_test, rm
 
 
-def process_crest_text_alt(x_data, y_data):
-    sents, relations = [], []
-    for token_list, label_list in zip(x_data, y_data):
-        if not any([label in ["C", "E"] for label in label_list]):
-            relations.append("Other")
-            # TODO: Hier etwas mit den Spans einfallen lassen
-            sent = " ".join(token_list)
-            sent = f"{sent}."
-            sents.append(sent)
-            continue
-
-        first_span_found = False
-        first_span_label = ""
-        idx = 0
-        for label in label_list:
-            if label in ["C", "E"]:
-                if idx == (len(label_list) - 1):
-                    token_list[idx] = f"[E2]{token_list[idx]}[/E2]"
-                    break
-                if not first_span_found:
-                    first_span_label = label
-                    if label_list[idx + 1] != label:
-                        token_list[idx] = f"[E1]{token_list[idx]}[/E1]"
-                        first_span_found = True
-                    else:
-                        token_list[idx] = f"[E1]{token_list[idx]}"
-                        while label_list[idx + 1] == label:
-                            idx += 1
-                        token_list[idx] = f"{token_list[idx]}[/E1]"
-                else:
-                    if label_list[idx + 1] != label:
-                        token_list[idx] = f"[E2]{token_list[idx]}[/E2]"
-                    else:
-                        token_list[idx] = f"[E2]{token_list[idx]}"
-                        while label_list[idx + 1] == label:
-                            idx += 1
-                        token_list[idx] = f"{token_list[idx]}[/E2]"
-            idx += 1
-        relations.append(
-            "Cause-Effect(e1, e2)"
-        ) if first_span_label == "C" else relations.append("Cause-Effect(e2, e1)")
-
-        sent = " ".join(token_list)
-        sent = f"{sent}."
-        sents.append(sent)
-
-    return sents, relations
-
-
-def process_crest_text(dataset_path):
+def process_crest_text_alt(dataset_path):
     crest_df = pd.read_excel(
         dataset_path, usecols=["span1", "span2", "context", "label", "direction"]
     )
@@ -178,9 +122,67 @@ def process_crest_text(dataset_path):
     return crest_df
 
 
+def extract_span_idx(idx_string):
+    idx_data = idx_string.split("\n")
+
+    span1_idx_list = idx_data[0][6:].split(" ")
+    span2_idx_list = idx_data[1][6:].split(" ")
+
+    def splitting_func(idx):
+        if idx == "":
+            return
+        start_end = idx.split(":")
+        return int(start_end[0]), int(start_end[1])
+
+    span1_idx_list = list(map(splitting_func, span1_idx_list))
+    span2_idx_list = list(map(splitting_func, span2_idx_list))
+
+    return span1_idx_list, span2_idx_list
+
+
+def process_crest_text(dataset_path):
+    crest_df = pd.read_excel(
+        dataset_path, usecols=["context", "idx", "label", "direction"]
+    )
+    crest_df["relations"] = pd.NA
+
+    def augment_context(row):
+        span1, span2 = extract_span_idx(row["idx"])
+        return (
+            row["context"][: span1[0][0]]
+            + "[E1]"
+            + row["context"][span1[0][0] : span1[0][1]]
+            + "[/E1]"
+            + row["context"][span1[0][1] : span2[0][0]]
+            + "[E2]"
+            + row["context"][span2[0][0] : span2[0][1]]
+            + "[/E2]"
+            + row["context"][span2[0][1] :]
+        )
+
+    crest_df["sents"] = crest_df.apply(augment_context, axis=1)
+    crest_df.drop(columns=["context", "idx"], inplace=True)
+
+    def add_relation(row):
+        if row["label"] == 0:
+            return "Other"
+        else:
+            if row["direction"] == 0:
+                return "Cause-Effect(e1, e2)"
+            elif row["direction"] == 1:
+                return "Cause-Effect(e2, e1)"
+            else:
+                return "Cause-Effect"
+
+    crest_df["relations"] = crest_df.apply(add_relation, axis=1)
+    crest_df.drop(columns=["label", "direction"], inplace=True)
+
+    return crest_df
+
+
 def preprocess_crest_dataset(args):
     """Data preprocessing for CREST datasets"""
-    dataset_path = args.data  # "./data/CREST/crest.xlsx"
+    dataset_path = "./data/CREST/crest.xlsx"
     logger.info("Reading training file %s..." % dataset_path)
 
     df = process_crest_text(dataset_path)
@@ -351,7 +353,6 @@ def load_dataloaders(args):
             "Saved %s tokenizer at ./data/%s_tokenizer.pkl" % (model_name, model_name)
         )
 
-    # if args.task == "semeval":
     relations_path = "./data/relations.pkl"
     train_path = "./data/df_train.pkl"
     test_path = "./data/df_test.pkl"
@@ -365,8 +366,11 @@ def load_dataloaders(args):
         df_test = load_pickle("df_test.pkl")
         logger.info("Loaded preproccessed data.")
     else:
-        df_train, df_test, rm = preprocess_semeval2010_8(args)
-        # df_train, df_test, rm = preprocess_crest_dataset(args)
+        if args.task == "semeval":
+            df_train, df_test, rm = preprocess_semeval2010_8(args)
+        elif args.task == "crest":
+            df_train, df_test, rm = preprocess_crest_dataset(args)
+        else:
+            logger.info("Given task '%s' is unknown." % (args.task))
 
-    # return train_loader, test_loader, train_length, test_length
     return df_train, df_test, len(df_train), len(df_test)
