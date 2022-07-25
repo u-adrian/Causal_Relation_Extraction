@@ -44,140 +44,6 @@ def train_and_fit(args):
     train_set, test_set, train_len, test_len = load_dataloaders(args)
     logger.info("Loaded %d Training samples." % train_len)
 
-    if args.model_no == 0:
-        from ..model.BERT.modeling_bert import BertModel as Model
-
-        model = args.model_size  #'bert-base-uncased'
-        lower_case = True
-        model_name = "BERT"
-        net = Model.from_pretrained(
-            model,
-            force_download=False,
-            model_size=args.model_size,
-            task="classification",
-            n_classes_=args.num_classes,
-        )
-    elif args.model_no == 1:
-        from ..model.ALBERT.modeling_albert import AlbertModel as Model
-
-        model = args.model_size  #'albert-base-v2'
-        lower_case = True
-        model_name = "ALBERT"
-        net = Model.from_pretrained(
-            model,
-            force_download=False,
-            model_size=args.model_size,
-            task="classification",
-            n_classes_=args.num_classes,
-        )
-    elif args.model_no == 2:  # BioBert
-        from ..model.BERT.modeling_bert import BertModel, BertConfig
-
-        model = "bert-base-uncased"
-        lower_case = False
-        model_name = "BioBERT"
-        config = BertConfig.from_pretrained(
-            "./additional_models/biobert_v1.1_pubmed/bert_config.json"
-        )
-        net = BertModel.from_pretrained(
-            pretrained_model_name_or_path="./additional_models/biobert_v1.1_pubmed/biobert_v1.1_pubmed.bin",
-            config=config,
-            force_download=False,
-            model_size="bert-base-uncased",
-            task="classification",
-            n_classes_=args.num_classes,
-        )
-
-    tokenizer = load_pickle("%s_tokenizer.pkl" % model_name)
-    net.resize_token_embeddings(len(tokenizer))
-    e1_id = tokenizer.convert_tokens_to_ids("[E1]")
-    e2_id = tokenizer.convert_tokens_to_ids("[E2]")
-    assert e1_id != e2_id != 1
-
-    if cuda:
-        net.cuda()
-
-    logger.info("FREEZING MOST HIDDEN LAYERS...")
-    if args.model_no == 0:
-        unfrozen_layers = [
-            "classifier",
-            "pooler",
-            "encoder.layer.11",
-            "classification_layer",
-            "blanks_linear",
-            "lm_linear",
-            "cls",
-        ]
-    elif args.model_no == 1:
-        unfrozen_layers = [
-            "classifier",
-            "pooler",
-            "classification_layer",
-            "blanks_linear",
-            "lm_linear",
-            "cls",
-            "albert_layer_groups.0.albert_layers.0.ffn",
-        ]
-    elif args.model_no == 2:
-        unfrozen_layers = [
-            "classifier",
-            "pooler",
-            "encoder.layer.11",
-            "classification_layer",
-            "blanks_linear",
-            "lm_linear",
-            "cls",
-        ]
-
-    for name, param in net.named_parameters():
-        if not any([layer in name for layer in unfrozen_layers]):
-            print("[FROZE]: %s" % name)
-            param.requires_grad = False
-        else:
-            print("[FREE]: %s" % name)
-            param.requires_grad = True
-
-    if args.use_pretrained_blanks == 1:
-        logger.info(
-            "Loading model pre-trained on blanks at ./data/test_checkpoint_%d.pth.tar..."
-            % args.model_no
-        )
-        checkpoint_path = "./data/test_checkpoint_%d.pth.tar" % args.model_no
-        checkpoint = torch.load(checkpoint_path)
-        model_dict = net.state_dict()
-        pretrained_dict = {
-            k: v for k, v in checkpoint["state_dict"].items() if k in model_dict.keys()
-        }
-        model_dict.update(pretrained_dict)
-        net.load_state_dict(pretrained_dict, strict=False)
-        del checkpoint, pretrained_dict, model_dict
-
-    criterion = nn.CrossEntropyLoss(ignore_index=-1)
-    optimizer = optim.Adam([{"params": net.parameters(), "lr": args.lr}])
-
-    scheduler = optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=[2, 4, 6, 8, 12, 15, 18, 20, 22, 24, 26, 30], gamma=0.8
-    )
-
-    start_epoch, best_pred, amp_checkpoint = load_state(
-        net, optimizer, scheduler, args, load_best=False
-    )
-
-    if (args.fp16) and (amp is not None):
-        logger.info("Using fp16...")
-        net, optimizer = amp.initialize(net, optimizer, opt_level="O2")
-        if amp_checkpoint is not None:
-            amp.load_state_dict(amp_checkpoint)
-        scheduler = optim.lr_scheduler.MultiStepLR(
-            optimizer,
-            milestones=[2, 4, 6, 8, 12, 15, 18, 20, 22, 24, 26, 30],
-            gamma=0.8,
-        )
-
-    losses_per_epoch, accuracy_per_epoch, test_f1_per_epoch = load_results(
-        args.model_no
-    )
-
     logger.info("Starting training process...")
 
     data = pd.concat([train_set, test_set])
@@ -193,6 +59,144 @@ def train_and_fit(args):
     for run, (train_index, test_index) in enumerate(kf.split(numpy_data)):
 
         print(f">>>>>>    Run {run}")
+
+        if args.model_no == 0:
+            from ..model.BERT.modeling_bert import BertModel as Model
+
+            model = args.model_size  #'bert-base-uncased'
+            lower_case = True
+            model_name = "BERT"
+            net = Model.from_pretrained(
+                model,
+                force_download=False,
+                model_size=args.model_size,
+                task="classification",
+                n_classes_=args.num_classes,
+            )
+        elif args.model_no == 1:
+            from ..model.ALBERT.modeling_albert import AlbertModel as Model
+
+            model = args.model_size  #'albert-base-v2'
+            lower_case = True
+            model_name = "ALBERT"
+            net = Model.from_pretrained(
+                model,
+                force_download=False,
+                model_size=args.model_size,
+                task="classification",
+                n_classes_=args.num_classes,
+            )
+        elif args.model_no == 2:  # BioBert
+            from ..model.BERT.modeling_bert import BertModel, BertConfig
+
+            model = "bert-base-uncased"
+            lower_case = False
+            model_name = "BioBERT"
+            config = BertConfig.from_pretrained(
+                "./additional_models/biobert_v1.1_pubmed/bert_config.json"
+            )
+            net = BertModel.from_pretrained(
+                pretrained_model_name_or_path="./additional_models/biobert_v1.1_pubmed/biobert_v1.1_pubmed.bin",
+                config=config,
+                force_download=False,
+                model_size="bert-base-uncased",
+                task="classification",
+                n_classes_=args.num_classes,
+            )
+
+        tokenizer = load_pickle("%s_tokenizer.pkl" % model_name)
+        net.resize_token_embeddings(len(tokenizer))
+        e1_id = tokenizer.convert_tokens_to_ids("[E1]")
+        e2_id = tokenizer.convert_tokens_to_ids("[E2]")
+        assert e1_id != e2_id != 1
+
+        if cuda:
+            net.cuda()
+
+        logger.info("FREEZING MOST HIDDEN LAYERS...")
+        if args.model_no == 0:
+            unfrozen_layers = [
+                "classifier",
+                "pooler",
+                "encoder.layer.11",
+                "classification_layer",
+                "blanks_linear",
+                "lm_linear",
+                "cls",
+            ]
+        elif args.model_no == 1:
+            unfrozen_layers = [
+                "classifier",
+                "pooler",
+                "classification_layer",
+                "blanks_linear",
+                "lm_linear",
+                "cls",
+                "albert_layer_groups.0.albert_layers.0.ffn",
+            ]
+        elif args.model_no == 2:
+            unfrozen_layers = [
+                "classifier",
+                "pooler",
+                "encoder.layer.11",
+                "classification_layer",
+                "blanks_linear",
+                "lm_linear",
+                "cls",
+            ]
+
+        for name, param in net.named_parameters():
+            if not any([layer in name for layer in unfrozen_layers]):
+                print("[FROZE]: %s" % name)
+                param.requires_grad = False
+            else:
+                print("[FREE]: %s" % name)
+                param.requires_grad = True
+
+        if args.use_pretrained_blanks == 1:
+            logger.info(
+                "Loading model pre-trained on blanks at ./data/test_checkpoint_%d.pth.tar..."
+                % args.model_no
+            )
+            checkpoint_path = "./data/test_checkpoint_%d.pth.tar" % args.model_no
+            checkpoint = torch.load(checkpoint_path)
+            model_dict = net.state_dict()
+            pretrained_dict = {
+                k: v
+                for k, v in checkpoint["state_dict"].items()
+                if k in model_dict.keys()
+            }
+            model_dict.update(pretrained_dict)
+            net.load_state_dict(pretrained_dict, strict=False)
+            del checkpoint, pretrained_dict, model_dict
+
+        criterion = nn.CrossEntropyLoss(ignore_index=-1)
+        optimizer = optim.Adam([{"params": net.parameters(), "lr": args.lr}])
+
+        scheduler = optim.lr_scheduler.MultiStepLR(
+            optimizer,
+            milestones=[2, 4, 6, 8, 12, 15, 18, 20, 22, 24, 26, 30],
+            gamma=0.8,
+        )
+
+        start_epoch, best_pred, amp_checkpoint = load_state(
+            net, optimizer, scheduler, args, load_best=False
+        )
+
+        if (args.fp16) and (amp is not None):
+            logger.info("Using fp16...")
+            net, optimizer = amp.initialize(net, optimizer, opt_level="O2")
+            if amp_checkpoint is not None:
+                amp.load_state_dict(amp_checkpoint)
+            scheduler = optim.lr_scheduler.MultiStepLR(
+                optimizer,
+                milestones=[2, 4, 6, 8, 12, 15, 18, 20, 22, 24, 26, 30],
+                gamma=0.8,
+            )
+
+        losses_per_epoch, accuracy_per_epoch, test_f1_per_epoch = load_results(
+            args.model_no
+        )
 
         train, test = numpy_data[train_index], numpy_data[test_index]
 
