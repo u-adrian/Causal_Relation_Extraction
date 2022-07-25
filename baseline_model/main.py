@@ -1,18 +1,14 @@
 import numpy as np
 from sklearn.model_selection import KFold
-
 from data_loader import load_data
-
 from sklearn_crfsuite import CRF
 from sklearn_crfsuite import metrics
-
 from feature_creator import sent2features
-
 import matplotlib.pyplot as plt
+from argparse import ArgumentParser
 
 
-def main():
-    dataset_path = "C:/Dev/Smart_Data/E4/datasets/crest_1_2_13.xlsx"
+def main(dataset_path):
     number_splits = 5
     seeds = [0, 1, 42, 47, 101]
 
@@ -93,4 +89,7 @@ def plot_results(y_test_arr, y_pred_arr):
 
 
 if __name__ == "__main__":
-    main()
+    parser = ArgumentParser()
+    parser.add_argument("--dataset_path", type=str, help="Path to CREST API created xlsx dataset")
+    args = parser.parse_args()
+    main(args.dataset_path)

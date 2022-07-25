@@ -8,7 +8,7 @@ def load_data(dataset_path):
         df = pd.read_excel(data_file, index_col=0)
 
     num_samples = len(df.index)
-    print(num_samples)
+    print("#Samples: ", num_samples)
     train_and_test_data = [extract_words_and_tags(df.iloc[sample]["context"], df.iloc[sample]["idx"],
                                                   int(df.iloc[sample]["label"]), int(df.iloc[sample]["direction"]))
                            for sample in range(num_samples)]
