@@ -40,7 +40,6 @@ def train_and_fit(args):
 
     cuda = torch.cuda.is_available()
 
-    # train_loader, test_loader, train_len, test_len = load_dataloaders(args)
     train_set, test_set, train_len, test_len = load_dataloaders(args)
     logger.info("Loaded %d Training samples." % train_len)
 
@@ -58,7 +57,7 @@ def train_and_fit(args):
 
     for run, (train_index, test_index) in enumerate(kf.split(numpy_data)):
 
-        print(f">>>>>>    Run {run}")
+        print(f">>>>>> Run {run} <<<<<<")
 
         if args.model_no == 0:
             from ..model.BERT.modeling_bert import BertModel as Model
@@ -223,6 +222,7 @@ def train_and_fit(args):
             label_pad_value=tokenizer.pad_token_id,
             label2_pad_value=-1,
         )
+
         train_loader = DataLoader(
             train_set,
             batch_size=args.batch_size,
@@ -231,6 +231,7 @@ def train_and_fit(args):
             collate_fn=PS,
             pin_memory=False,
         )
+
         test_loader = DataLoader(
             test_set,
             batch_size=args.batch_size,
@@ -312,8 +313,6 @@ def train_and_fit(args):
                     total_loss = 0.0
                     total_acc = 0.0
 
-            # print("HALLO DIANA")
-
             scheduler.step()
             results = evaluate_results(net, test_loader, pad_id, cuda)
             losses_per_epoch.append(sum(losses_per_batch) / len(losses_per_batch))
@@ -369,7 +368,7 @@ def train_and_fit(args):
                     ),
                 )
 
-    print("<>>>>>>> HALLO DIANA HIER IST DER F1 SCORE!!! <>>>>>>>")
+    print(">>>> CV f1 score <<<<")
     print("f1 score list: ", f1_scores_per_split)
     print("mean f1 score: ", f1_scores_per_split.mean())
     print("std f1 score: ", f1_scores_per_split.std())
