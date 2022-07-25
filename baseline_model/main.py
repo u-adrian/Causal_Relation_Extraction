@@ -8,13 +8,14 @@ from sklearn_crfsuite import metrics
 
 from baseline_model.feature_creator import sent2features
 
+import matplotlib.pyplot as plt
+
 
 def main():
     #dataset_path = "C:/Dev/Smart_Data/E4/datasets/output.xlsx"
     dataset_path = "C:/Dev/Smart_Data/E4/datasets/crest_1_2_13.xlsx"
-
     number_splits = 5
-    seeds = [0,1,42,47,101]
+    seeds = [0, 1, 42, 47, 101]
 
     x_data, y_data = load_data(dataset_path)
     x_data = [sent2features(s) for s in x_data]
@@ -45,24 +46,51 @@ def main():
 
 
     print("ALL: ")
+
     plot_results(y_test_arr, y_pred_arr)
 
 
 def plot_results(y_test_arr, y_pred_arr):
+    tags = ["C", "E", "O"]
+    seeds = [0, 1, 42, 47, 101]
+    colors = ["blue", "red", "yellow", "green", "orange"]
 
     shape = y_pred_arr.shape
-    num_seeds = shape[0]
+    num_seeds = len(seeds)
     num_splits = shape[1]
     print(shape)
+    f1_scores = np.zeros((num_seeds, num_splits, 3))
+
     for seed_id in range(num_seeds):
-        all_y_test = []
-        all_y_pred = []
         for split_id in range(num_splits):
-            all_y_test = all_y_test + y_test_arr[seed_id, split_id]
-            all_y_pred = all_y_pred + y_pred_arr[seed_id, split_id]
-        print(f"CV {seed_id}:")
-        print(metrics.flat_classification_report(all_y_test, all_y_pred, digits=3))
-        print(metrics.flat_f1_score(all_y_test, all_y_pred, average='weighted'))
+            y_test = y_test_arr[seed_id, split_id]
+            y_pred = y_pred_arr[seed_id, split_id]
+            report = metrics.flat_classification_report(y_test, y_pred, digits=3, output_dict=True)
+            for i, tag in enumerate(tags):
+                f1_scores[seed_id, split_id, i] = report[tag]["f1-score"]
+
+    means = f1_scores.mean(axis=1)
+    stds = f1_scores.std(axis=1)
+    xs = np.asarray([0.0, 1.0, 2.0])
+    plt.ylim([0, 1.0])
+    #for x, tag in enumerate(tags):
+    for s, seed in enumerate(seeds):
+        color = colors[s]
+        plt.bar(
+            xs + 0.1 * s - 0.2,
+            means[s],
+            yerr=stds[s],
+            width=0.1,
+            color=color,
+            edgecolor="black",
+            align="center",
+            label=str(seed)
+        )
+    plt.ylabel("F1-Score")
+    plt.xlabel("Tags")
+    plt.legend(title="Seeds")
+    plt.xticks([0,1,2],["Cause", "Effect", "Other"])
+    plt.show()
 
 
 if __name__ == "__main__":
